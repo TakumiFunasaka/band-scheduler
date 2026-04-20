@@ -26,7 +26,7 @@ export type CreateEventInput = {
   end_date: string
   slot_start_hour?: number
   slot_end_hour?: number
-  exclude_holidays?: boolean
+  weekdays_only?: boolean
   password: string
 }
 

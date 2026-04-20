@@ -123,6 +123,6 @@ Settings → Secrets and variables → Actions に以下を追加：
 - 1イベント = バンド練1回分。2〜3ヶ月に1回の開催・調整期間2〜4週間の運用を想定
 - `supabase/migrations/002_holidays_and_cleanup.sql` を適用すると `pg_cron` が毎日03:00 UTCに1年より古いイベントを自動削除（participants/availability/songs はCASCADEで連動）
 - 曲候補は開催回ごとに閉じる（イベント削除で一緒に消える）
-- 祝日除外は `@holiday-jp/holiday_jp` を利用（ホスト側で On/Off、デフォルトOn）
+- 「出勤日のみ」トグルで土日祝を一括除外（`@holiday-jp/holiday_jp` 使用、ホスト側で On/Off、デフォルトOn）
 - バランススコアは Dr+Ba+(Gt|Key)+Vo が揃う日を 1.5倍。ロジックは `src/lib/scoring.ts`
 - JWT有効期限: ホスト30日 / 参加者30日

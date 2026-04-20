@@ -21,7 +21,7 @@ export default function CreateEvent() {
   const [title, setTitle] = useState('次回のバンド練')
   const [start, setStart] = useState(today())
   const [end, setEnd] = useState(plusDays(today(), 30))
-  const [excludeHolidays, setExcludeHolidays] = useState(true)
+  const [weekdaysOnly, setWeekdaysOnly] = useState(true)
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -44,7 +44,7 @@ export default function CreateEvent() {
         title,
         start_date: start,
         end_date: end,
-        exclude_holidays: excludeHolidays,
+        weekdays_only: weekdaysOnly,
         password,
       })
       saveJwt(event.slug, jwt)
@@ -100,11 +100,11 @@ export default function CreateEvent() {
       <label style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '12px 0 0', cursor: 'pointer' }}>
         <input
           type="checkbox"
-          checked={excludeHolidays}
-          onChange={(e) => setExcludeHolidays(e.target.checked)}
+          checked={weekdaysOnly}
+          onChange={(e) => setWeekdaysOnly(e.target.checked)}
           style={{ width: 'auto' }}
         />
-        祝日を候補日から除外する
+        出勤日のみを候補にする（土日祝を除く）
       </label>
       <label>パスワード（メンバーに共有する合言葉）</label>
       <input

@@ -82,13 +82,16 @@ export function scoreDates(
 export function datesInRange(
   start: string,
   end: string,
-  opts: { excludeHolidays?: boolean } = {},
+  opts: { weekdaysOnly?: boolean } = {},
 ): string[] {
   const result: string[] = []
   const cur = new Date(start + 'T00:00:00')
   const last = new Date(end + 'T00:00:00')
   while (cur <= last) {
-    if (!opts.excludeHolidays || !isHoliday(cur)) {
+    const day = cur.getDay() // 0=Sun, 6=Sat
+    const isWeekend = day === 0 || day === 6
+    const skip = opts.weekdaysOnly && (isWeekend || isHoliday(cur))
+    if (!skip) {
       const y = cur.getFullYear()
       const m = String(cur.getMonth() + 1).padStart(2, '0')
       const d = String(cur.getDate()).padStart(2, '0')

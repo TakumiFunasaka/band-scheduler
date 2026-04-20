@@ -25,7 +25,7 @@ Deno.serve(async (req) => {
     const { data: event, error } = await admin
       .from('events')
       .select(
-        'id, slug, title, start_date, end_date, slot_start_hour, slot_end_hour, exclude_holidays, password_hash',
+        'id, slug, title, start_date, end_date, slot_start_hour, slot_end_hour, weekdays_only, password_hash',
       )
       .eq('slug', slug)
       .maybeSingle()

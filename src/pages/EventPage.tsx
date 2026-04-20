@@ -51,7 +51,7 @@ export default function EventPage() {
       const { data, error } = await supabase()
         .from('events')
         .select(
-          'id, slug, title, start_date, end_date, slot_start_hour, slot_end_hour, exclude_holidays',
+          'id, slug, title, start_date, end_date, slot_start_hour, slot_end_hour, weekdays_only',
         )
         .eq('slug', slug)
         .maybeSingle()

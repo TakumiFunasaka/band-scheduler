@@ -33,9 +33,9 @@ export default function ScheduleView({
   const dates = useMemo(
     () =>
       datesInRange(meta.start_date, meta.end_date, {
-        excludeHolidays: meta.exclude_holidays,
+        weekdaysOnly: meta.weekdays_only,
       }),
-    [meta.start_date, meta.end_date, meta.exclude_holidays],
+    [meta.start_date, meta.end_date, meta.weekdays_only],
   )
 
   async function reload() {
