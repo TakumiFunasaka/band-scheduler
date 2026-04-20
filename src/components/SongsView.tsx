@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { fetchPopularSongs } from '../lib/api'
 import { supabase } from '../lib/supabase'
 import type { ParticipantRow, PopularSong, SongRow, SongVoteRow } from '../lib/types'
@@ -21,6 +21,30 @@ function youtubeEmbed(url: string): string | null {
 
 type EnrichedSong = SongRow & { votes: SongVoteRow[] }
 
+const TAG_SUGGESTIONS = [
+  'japanese',
+  'j-rock',
+  'j-pop',
+  'city pop',
+  'anime',
+  'rock',
+  'pop',
+  'indie',
+  'punk',
+  'alternative',
+  'metal',
+  'funk',
+  'soul',
+  'r&b',
+  'jazz',
+  'blues',
+  'acoustic',
+  'electronic',
+  '80s',
+  '90s',
+  '2000s',
+]
+
 export default function SongsView({
   eventId,
   me,
@@ -30,9 +54,13 @@ export default function SongsView({
 }) {
   const [songs, setSongs] = useState<EnrichedSong[]>([])
   const [popular, setPopular] = useState<PopularSong[]>([])
+  const [popularSeed, setPopularSeed] = useState(0)
+  const [tag, setTag] = useState('japanese')
+  const [lastFetchedTag, setLastFetchedTag] = useState<string | null>(null)
   const [manualUrl, setManualUrl] = useState('')
   const [manualTitle, setManualTitle] = useState('')
   const [loadingPopular, setLoadingPopular] = useState(false)
+  const [popularError, setPopularError] = useState<string | null>(null)
   const [expanded, setExpanded] = useState<string | null>(null)
 
   async function reload() {
@@ -54,16 +82,49 @@ export default function SongsView({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [eventId])
 
-  async function loadPopular() {
+  async function loadPopular(overrideTag?: string) {
+    const t = (overrideTag ?? tag ?? '').trim() || 'japanese'
+    if (overrideTag !== undefined) setTag(overrideTag)
     setLoadingPopular(true)
+    setPopularError(null)
     try {
-      setPopular(await fetchPopularSongs('japanese'))
+      const result = await fetchPopularSongs(t, 100)
+      if (result.length === 0) {
+        setPopularError(`「${t}」では曲が見つからなかった。別のタグで試してみて。`)
+      }
+      setPopular(result)
+      setLastFetchedTag(t)
+      setPopularSeed(Math.random())
     } catch (e) {
-      console.error(e)
+      setPopularError(e instanceof Error ? e.message : String(e))
     } finally {
       setLoadingPopular(false)
     }
   }
+
+  function shufflePopular() {
+    setPopularSeed(Math.random())
+  }
+
+  // Deterministic shuffle based on popularSeed so re-renders don't re-shuffle.
+  const shownPopular = useMemo(() => {
+    if (popular.length === 0) return []
+    const arr = popular.slice()
+    // Fisher–Yates with seeded PRNG (mulberry32).
+    let s = Math.floor(popularSeed * 2 ** 32) || 1
+    const rand = () => {
+      s |= 0
+      s = (s + 0x6d2b79f5) | 0
+      let t = Math.imul(s ^ (s >>> 15), 1 | s)
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+    }
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(rand() * (i + 1))
+      ;[arr[i], arr[j]] = [arr[j], arr[i]]
+    }
+    return arr.slice(0, 20)
+  }, [popular, popularSeed])
 
   async function pickFromPopular(s: PopularSong) {
     await supabase().from('songs').insert({
@@ -200,7 +261,6 @@ export default function SongsView({
         <input
           value={manualTitle}
           onChange={(e) => setManualTitle(e.target.value)}
-          placeholder="例: 小さな恋のうた"
         />
         <button style={{ marginTop: 12 }} onClick={addManual}>
           追加
@@ -208,16 +268,54 @@ export default function SongsView({
       </div>
 
       <div className="card">
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <h2 style={{ margin: 0 }}>Last.fm 人気曲（japanese タグ）</h2>
-          <button className="ghost" onClick={loadPopular} disabled={loadingPopular}>
-            {loadingPopular ? '読込中…' : popular.length ? '再読込' : '読み込む'}
+        <h2 style={{ margin: 0 }}>Last.fm からピック</h2>
+        <p className="muted" style={{ marginTop: 8 }}>
+          Last.fmのタグで検索、シャッフルで別の曲に入れ替え。
+        </p>
+        <div className="row" style={{ marginTop: 8 }}>
+          <input
+            style={{ flex: 1 }}
+            value={tag}
+            onChange={(e) => setTag(e.target.value)}
+            placeholder="タグ"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault()
+                loadPopular(tag)
+              }
+            }}
+          />
+          <button onClick={() => loadPopular()} disabled={loadingPopular}>
+            {loadingPopular ? '読込中…' : '検索'}
+          </button>
+          <button
+            className="ghost"
+            onClick={shufflePopular}
+            disabled={popular.length === 0}
+          >
+            シャッフル
           </button>
         </div>
-        <p className="muted" style={{ marginTop: 8 }}>
-          雑にインスピレーションを拾う用。クリックで候補曲に追加。
-        </p>
-        {popular.slice(0, 20).map((s) => (
+        <div style={{ marginTop: 8, display: 'flex', flexWrap: 'wrap' }}>
+          {TAG_SUGGESTIONS.map((t) => (
+            <button
+              type="button"
+              key={t}
+              className={'chip' + (lastFetchedTag === t ? ' active' : '')}
+              onClick={() => loadPopular(t)}
+              disabled={loadingPopular}
+            >
+              {t}
+            </button>
+          ))}
+        </div>
+        {popularError && <p className="error" style={{ marginTop: 8 }}>{popularError}</p>}
+        {lastFetchedTag && popular.length > 0 && (
+          <p className="muted" style={{ marginTop: 8 }}>
+            「{lastFetchedTag}」の上位 {popular.length} 曲から 20 曲をランダム表示中。
+          </p>
+        )}
+        {shownPopular.map((s) => (
           <div className="song-item" key={s.url}>
             <div className="meta">
               <div className="title">{s.title}</div>

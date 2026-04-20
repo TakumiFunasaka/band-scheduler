@@ -31,8 +31,11 @@ export default function ScheduleView({
   const [participants, setParticipants] = useState<ParticipantRow[]>([])
   const [availability, setAvailability] = useState<AvailabilityRow[]>([])
   const dates = useMemo(
-    () => datesInRange(meta.start_date, meta.end_date),
-    [meta.start_date, meta.end_date],
+    () =>
+      datesInRange(meta.start_date, meta.end_date, {
+        excludeHolidays: meta.exclude_holidays,
+      }),
+    [meta.start_date, meta.end_date, meta.exclude_holidays],
   )
 
   async function reload() {
@@ -141,17 +144,25 @@ export default function ScheduleView({
       </div>
 
       <div className="card">
-        <h2>日程スコア（楽器バランス込み）</h2>
-        <p className="muted">Dr+Ba+(Gt|Key)+Vo が揃う日は 1.5倍。○=1、△=0.4。</p>
+        <h2>日程スコア</h2>
+        <p className="muted">
+          ○=1、△=0.5 で数えつつ、楽器の種類が揃うほど＆人が増えるほど加点（いずれも飽和するので2人目以降は効きが弱め）。
+        </p>
         {scores.map((s, i) => (
           <div key={s.date} className={'date-score' + (i === 0 && s.score > 0 ? ' top' : '')}>
             <div className="date">{formatDate(s.date)}</div>
             <div className="score">{s.score.toFixed(1)}</div>
             <div style={{ flex: 1, fontSize: 13 }}>
-              {s.balanced && <span className="pill">バランスOK</span>}
               <span className="muted">
                 ○ {s.attendees.length}人 / △ {s.maybes.length}人
-              </span>
+              </span>{' '}
+              {Object.entries(s.coverage)
+                .filter(([, v]) => (v ?? 0) > 0)
+                .map(([inst]) => (
+                  <span className="pill" key={inst}>
+                    {inst}
+                  </span>
+                ))}
             </div>
           </div>
         ))}

@@ -1,3 +1,4 @@
+import { isHoliday } from '@holiday-jp/holiday_jp'
 import type {
   AvailabilityRow,
   AvailabilityStatus,
@@ -5,28 +6,33 @@ import type {
   ParticipantRow,
 } from './types'
 
+// Per-instrument relative weight.
+// Rhythm section is slightly more load-bearing; "other" is light.
 const INSTRUMENT_WEIGHT: Record<Instrument, number> = {
-  drums: 4,
-  bass: 4,
-  vocal: 3,
-  guitar: 2,
-  keyboard: 1,
-  other: 0.5,
+  drums: 1.2,
+  bass: 1.1,
+  vocal: 1.0,
+  guitar: 0.9,
+  keyboard: 0.8,
+  other: 0.4,
 }
 
 const STATUS_WEIGHT: Record<AvailabilityStatus, number> = {
   yes: 1,
-  maybe: 0.4,
+  maybe: 0.5,
   no: 0,
 }
+
+// Diminishing returns: first person in a role contributes most, nth much less.
+// f(0)=0, f(1)≈0.63, f(2)≈0.86, f(3)≈0.95
+const saturate = (x: number) => 1 - Math.exp(-x)
 
 export type DateScore = {
   date: string
   score: number
   attendees: ParticipantRow[]
   maybes: ParticipantRow[]
-  coverage: Partial<Record<Instrument, number>> // weighted count per instrument
-  balanced: boolean // true if Dr + Ba + (Gt|Key) + Vo present with at least "maybe"
+  coverage: Partial<Record<Instrument, number>>
 }
 
 export function scoreDates(
@@ -42,42 +48,52 @@ export function scoreDates(
       const attendees: ParticipantRow[] = []
       const maybes: ParticipantRow[] = []
       const coverage: Partial<Record<Instrument, number>> = {}
-      let score = 0
+      let headcount = 0
 
       for (const row of availability) {
         if (row.date !== date) continue
         const p = byParticipant.get(row.participant_id)
         if (!p) continue
-        const w = STATUS_WEIGHT[row.status]
-        if (w === 0) continue
+        const sw = STATUS_WEIGHT[row.status]
+        if (sw === 0) continue
         if (row.status === 'yes') attendees.push(p)
         else maybes.push(p)
+        headcount += sw
         for (const inst of p.instruments) {
-          coverage[inst] = (coverage[inst] ?? 0) + w
-          score += (INSTRUMENT_WEIGHT[inst] ?? 0) * w
+          coverage[inst] = (coverage[inst] ?? 0) + sw
         }
       }
 
-      const has = (i: Instrument) => (coverage[i] ?? 0) > 0
-      const hasHarmony = has('guitar') || has('keyboard')
-      const balanced =
-        has('drums') && has('bass') && hasHarmony && has('vocal')
-      if (balanced) score *= 1.5
+      // Weighted & saturated per-instrument contribution.
+      let roleScore = 0
+      for (const inst of Object.keys(INSTRUMENT_WEIGHT) as Instrument[]) {
+        roleScore += INSTRUMENT_WEIGHT[inst] * saturate(coverage[inst] ?? 0)
+      }
+      // Headcount bonus (also saturating — after ~3 people it plateaus).
+      const headcountBonus = 2 * saturate(headcount / 2.5)
 
-      return { date, score, attendees, maybes, coverage, balanced }
+      const score = roleScore + headcountBonus
+
+      return { date, score, attendees, maybes, coverage }
     })
     .sort((a, b) => b.score - a.score || a.date.localeCompare(b.date))
 }
 
-export function datesInRange(start: string, end: string): string[] {
+export function datesInRange(
+  start: string,
+  end: string,
+  opts: { excludeHolidays?: boolean } = {},
+): string[] {
   const result: string[] = []
   const cur = new Date(start + 'T00:00:00')
   const last = new Date(end + 'T00:00:00')
   while (cur <= last) {
-    const y = cur.getFullYear()
-    const m = String(cur.getMonth() + 1).padStart(2, '0')
-    const d = String(cur.getDate()).padStart(2, '0')
-    result.push(`${y}-${m}-${d}`)
+    if (!opts.excludeHolidays || !isHoliday(cur)) {
+      const y = cur.getFullYear()
+      const m = String(cur.getMonth() + 1).padStart(2, '0')
+      const d = String(cur.getDate()).padStart(2, '0')
+      result.push(`${y}-${m}-${d}`)
+    }
     cur.setDate(cur.getDate() + 1)
   }
   return result

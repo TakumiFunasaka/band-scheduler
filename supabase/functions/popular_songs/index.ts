@@ -17,11 +17,20 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: 'LASTFM_API_KEY not set' }, 500)
     }
 
-    const { tag = 'japanese' } = await req.json().catch(() => ({}))
+    const body = await req.json().catch(() => ({} as Record<string, unknown>))
+    const tag = typeof body.tag === 'string' && body.tag.trim()
+      ? body.tag.trim()
+      : 'japanese'
+    const limit = Math.min(
+      typeof body.limit === 'number' && body.limit > 0 ? body.limit : 100,
+      200,
+    )
+
+    // Pull a larger pool from Last.fm so the caller can shuffle client-side.
     const url = new URL('https://ws.audioscrobbler.com/2.0/')
     url.searchParams.set('method', 'tag.gettoptracks')
     url.searchParams.set('tag', tag)
-    url.searchParams.set('limit', '30')
+    url.searchParams.set('limit', String(limit))
     url.searchParams.set('api_key', LASTFM_API_KEY)
     url.searchParams.set('format', 'json')
 
@@ -31,6 +40,13 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: `last.fm ${res.status}: ${text}` }, 502)
     }
     const data = await res.json()
+    // Last.fm returns `error` field for bad tags etc.
+    if (data?.error) {
+      return jsonResponse(
+        { error: `last.fm: ${data.message ?? 'unknown error'}` },
+        502,
+      )
+    }
     const tracks: LastFmTrack[] = data?.tracks?.track ?? []
 
     const songs = tracks.map((t) => ({
@@ -40,7 +56,7 @@ Deno.serve(async (req) => {
       listeners: t.listeners ? Number(t.listeners) : undefined,
     }))
 
-    return jsonResponse({ songs })
+    return jsonResponse({ tag, songs })
   } catch (e) {
     return jsonResponse({ error: e instanceof Error ? e.message : String(e) }, 500)
   }

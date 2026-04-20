@@ -49,7 +49,6 @@ export default function ParticipantForm({
       <input
         value={nickname}
         onChange={(e) => setNickname(e.target.value)}
-        placeholder="例: ふなさか"
         required
       />
       <label>やりたい楽器（複数選択可）</label>

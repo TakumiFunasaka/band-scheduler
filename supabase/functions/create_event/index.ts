@@ -22,6 +22,7 @@ Deno.serve(async (req) => {
       end_date,
       slot_start_hour = 18,
       slot_end_hour = 22,
+      exclude_holidays = false,
       password,
     } = await req.json()
 
@@ -57,6 +58,7 @@ Deno.serve(async (req) => {
           end_date,
           slot_start_hour,
           slot_end_hour,
+          exclude_holidays,
         })
         .select('id, slug')
         .single()
@@ -92,6 +94,7 @@ Deno.serve(async (req) => {
         end_date,
         slot_start_hour,
         slot_end_hour,
+        exclude_holidays,
       },
       jwt,
     })

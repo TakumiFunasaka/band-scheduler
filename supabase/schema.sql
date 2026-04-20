@@ -14,6 +14,7 @@ create table if not exists events (
   end_date date not null,
   slot_start_hour int not null default 18,
   slot_end_hour int not null default 22,
+  exclude_holidays boolean not null default false,
   created_at timestamptz not null default now()
 );
 

@@ -13,7 +13,7 @@ export default function App() {
         <Outlet />
       </main>
       <footer className="app-footer">
-        <span>社内バンド部用 / 週次で閉じる運用</span>
+        <span>社内バンド部用</span>
       </footer>
     </div>
   )

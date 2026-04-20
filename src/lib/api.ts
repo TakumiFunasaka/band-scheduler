@@ -26,6 +26,7 @@ export type CreateEventInput = {
   end_date: string
   slot_start_hour?: number
   slot_end_hour?: number
+  exclude_holidays?: boolean
   password: string
 }
 
@@ -56,7 +57,13 @@ export async function joinEvent(
   return callFn<JoinEventResult>('join_event', input)
 }
 
-export async function fetchPopularSongs(tag = 'japanese'): Promise<PopularSong[]> {
-  const res = await callFn<{ songs: PopularSong[] }>('popular_songs', { tag })
+export async function fetchPopularSongs(
+  tag = 'japanese',
+  limit = 100,
+): Promise<PopularSong[]> {
+  const res = await callFn<{ songs: PopularSong[] }>('popular_songs', {
+    tag,
+    limit,
+  })
   return res.songs
 }

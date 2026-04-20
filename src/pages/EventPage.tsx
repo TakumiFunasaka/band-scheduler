@@ -43,19 +43,36 @@ export default function EventPage() {
     setLoading(false)
   }, [slug])
 
+  const [fetchError, setFetchError] = useState<string | null>(null)
+
   useEffect(() => {
     if (!authed) return
     ;(async () => {
       const { data, error } = await supabase()
         .from('events')
-        .select('id, slug, title, start_date, end_date, slot_start_hour, slot_end_hour')
+        .select(
+          'id, slug, title, start_date, end_date, slot_start_hour, slot_end_hour, exclude_holidays',
+        )
         .eq('slug', slug)
         .maybeSingle()
-      if (error || !data) {
+      if (error) {
+        // Auth/RLS errors → clear JWT and ask again. Other errors → show.
+        const authCode = error.code === 'PGRST301' || error.code === '42501'
+        if (authCode) {
+          clearJwt(slug)
+          setAuthed(false)
+        } else {
+          setFetchError(`${error.code ?? ''} ${error.message}`.trim())
+        }
+        return
+      }
+      if (!data) {
+        // JWT probably expired / mismatched.
         clearJwt(slug)
         setAuthed(false)
         return
       }
+      setFetchError(null)
       setMeta(data as EventMeta)
       await loadMe()
     })()
@@ -80,7 +97,21 @@ export default function EventPage() {
     return <PasswordGate slug={slug} onUnlock={onUnlock} />
   }
 
-  if (!meta) return <p className="muted">読み込み中…</p>
+  if (!meta) {
+    if (fetchError) {
+      return (
+        <div className="card">
+          <h2>読み込みエラー</h2>
+          <p className="error">{fetchError}</p>
+          <p className="muted">
+            DBマイグレーション未適用か、ネットワーク一時エラーの可能性。再読込するか、管理者に連絡してください。
+          </p>
+          <button onClick={() => location.reload()}>再読込</button>
+        </div>
+      )
+    }
+    return <p className="muted">読み込み中…</p>
+  }
 
   if (!me) {
     return <ParticipantForm eventId={meta.id} onCreated={onMe} />

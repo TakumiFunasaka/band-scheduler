@@ -25,6 +25,7 @@ export type EventRow = {
   end_date: string
   slot_start_hour: number
   slot_end_hour: number
+  exclude_holidays: boolean
   created_at: string
 }
 
@@ -76,4 +77,5 @@ export type EventMeta = {
   end_date: string
   slot_start_hour: number
   slot_end_hour: number
+  exclude_holidays: boolean
 }

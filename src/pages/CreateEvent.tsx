@@ -2,20 +2,26 @@ import { useState } from 'react'
 import { createEvent } from '../lib/api'
 import { saveJwt } from '../lib/auth'
 
+function formatLocal(d: Date) {
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
 function today() {
-  const d = new Date()
-  return d.toISOString().slice(0, 10)
+  return formatLocal(new Date())
 }
 function plusDays(yyyyMmDd: string, days: number) {
   const d = new Date(yyyyMmDd + 'T00:00:00')
   d.setDate(d.getDate() + days)
-  return d.toISOString().slice(0, 10)
+  return formatLocal(d)
 }
 
 export default function CreateEvent() {
-  const [title, setTitle] = useState('今週のバンド練')
+  const [title, setTitle] = useState('次回のバンド練')
   const [start, setStart] = useState(today())
-  const [end, setEnd] = useState(plusDays(today(), 13))
+  const [end, setEnd] = useState(plusDays(today(), 30))
+  const [excludeHolidays, setExcludeHolidays] = useState(true)
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -38,6 +44,7 @@ export default function CreateEvent() {
         title,
         start_date: start,
         end_date: end,
+        exclude_holidays: excludeHolidays,
         password,
       })
       saveJwt(event.slug, jwt)
@@ -90,6 +97,15 @@ export default function CreateEvent() {
           <input type="date" value={end} onChange={(e) => setEnd(e.target.value)} required />
         </div>
       </div>
+      <label style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '12px 0 0', cursor: 'pointer' }}>
+        <input
+          type="checkbox"
+          checked={excludeHolidays}
+          onChange={(e) => setExcludeHolidays(e.target.checked)}
+          style={{ width: 'auto' }}
+        />
+        祝日を候補日から除外する
+      </label>
       <label>パスワード（メンバーに共有する合言葉）</label>
       <input
         type="text"

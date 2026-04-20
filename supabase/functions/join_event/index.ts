@@ -25,7 +25,7 @@ Deno.serve(async (req) => {
     const { data: event, error } = await admin
       .from('events')
       .select(
-        'id, slug, title, start_date, end_date, slot_start_hour, slot_end_hour, password_hash',
+        'id, slug, title, start_date, end_date, slot_start_hour, slot_end_hour, exclude_holidays, password_hash',
       )
       .eq('slug', slug)
       .maybeSingle()
@@ -44,7 +44,7 @@ Deno.serve(async (req) => {
         event_id: event.id,
       },
       JWT_SECRET,
-      60 * 60 * 24 * 7, // 7 days for participants
+      60 * 60 * 24 * 30, // 30 days for participants
     )
 
     const { password_hash: _omit, ...safe } = event
