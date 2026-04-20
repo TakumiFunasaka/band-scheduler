@@ -177,7 +177,11 @@ export default function SongsView({
     <div>
       <div className="card">
         <h2>候補曲</h2>
-        {songs.length === 0 && <p className="muted">まだ候補がありません。下から追加してみよう。</p>}
+        {songs.length === 0 ? (
+          <p className="muted">まだ候補がありません。下から追加してみよう。</p>
+        ) : (
+          <p className="muted">♥ を押すと投票。自動保存されるので保存ボタンはありません。</p>
+        )}
         {songs.map((s) => {
           const iVoted = s.votes.some((v) => v.voter === me.nickname)
           const embed = s.youtube_url ? youtubeEmbed(s.youtube_url) : null

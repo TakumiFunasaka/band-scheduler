@@ -113,7 +113,9 @@ export default function ScheduleView({
     <div>
       <div className="card">
         <h2>あなたの回答（{me.nickname}）</h2>
-        <p className="muted">18:00-22:00 の参加可否を ○/△/× で</p>
+        <p className="muted">
+          18:00-22:00 の参加可否を ○/△/× で。<strong>押した瞬間に自動保存</strong>されるので保存ボタンはありません。
+        </p>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8 }}>
           {dates.map((d) => (
             <div
