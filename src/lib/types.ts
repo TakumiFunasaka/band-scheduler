@@ -62,6 +62,14 @@ export type SongVoteRow = {
   created_at: string
 }
 
+export type SongCommentRow = {
+  id: string
+  song_id: string
+  commenter: string
+  body: string
+  created_at: string
+}
+
 export type PopularSong = {
   title: string
   artist: string

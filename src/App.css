@@ -194,6 +194,40 @@
   text-align: right;
 }
 
+.comment-thread {
+  margin: 0 0 12px 32px;
+  padding: 12px;
+  border-left: 3px solid var(--accent-soft);
+  background: var(--accent-soft);
+  border-radius: 0 8px 8px 0;
+}
+.comment {
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+.comment:last-of-type {
+  border-bottom: 0;
+}
+.comment-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 2px;
+  font-size: 13px;
+}
+.comment-body {
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-size: 14px;
+}
+.comment-form {
+  margin-top: 8px;
+}
+.comment-form textarea {
+  resize: vertical;
+  min-height: 48px;
+}
+
 .chip {
   display: inline-flex;
   align-items: center;

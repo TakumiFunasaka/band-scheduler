@@ -1,7 +1,25 @@
 import { useEffect, useMemo, useState } from 'react'
 import { fetchPopularSongs } from '../lib/api'
 import { supabase } from '../lib/supabase'
-import type { ParticipantRow, PopularSong, SongRow, SongVoteRow } from '../lib/types'
+import type {
+  ParticipantRow,
+  PopularSong,
+  SongCommentRow,
+  SongRow,
+  SongVoteRow,
+} from '../lib/types'
+
+function timeAgo(iso: string): string {
+  const d = Date.now() - new Date(iso).getTime()
+  const m = Math.floor(d / 60000)
+  if (m < 1) return 'たった今'
+  if (m < 60) return `${m}分前`
+  const h = Math.floor(m / 60)
+  if (h < 24) return `${h}時間前`
+  const days = Math.floor(h / 24)
+  if (days < 30) return `${days}日前`
+  return new Date(iso).toLocaleDateString('ja-JP')
+}
 
 function youtubeEmbed(url: string): string | null {
   try {
@@ -19,7 +37,10 @@ function youtubeEmbed(url: string): string | null {
   }
 }
 
-type EnrichedSong = SongRow & { votes: SongVoteRow[] }
+type EnrichedSong = SongRow & {
+  votes: SongVoteRow[]
+  comments: SongCommentRow[]
+}
 
 const TAG_SUGGESTIONS = [
   'japanese',
@@ -62,19 +83,58 @@ export default function SongsView({
   const [loadingPopular, setLoadingPopular] = useState(false)
   const [popularError, setPopularError] = useState<string | null>(null)
   const [expanded, setExpanded] = useState<string | null>(null)
+  const [openComments, setOpenComments] = useState<Set<string>>(new Set())
+  const [commentDraft, setCommentDraft] = useState<Record<string, string>>({})
 
   async function reload() {
     const { data } = await supabase()
       .from('songs')
-      .select('*, song_votes(*)')
+      .select('*, song_votes(*), song_comments(*)')
       .eq('event_id', eventId)
       .order('created_at', { ascending: false })
     if (!data) return
-    const enriched = (data as (SongRow & { song_votes: SongVoteRow[] })[]).map(
-      ({ song_votes, ...rest }) => ({ ...rest, votes: song_votes ?? [] }),
-    )
+    const enriched = (
+      data as (SongRow & {
+        song_votes: SongVoteRow[]
+        song_comments: SongCommentRow[]
+      })[]
+    ).map(({ song_votes, song_comments, ...rest }) => ({
+      ...rest,
+      votes: song_votes ?? [],
+      comments: (song_comments ?? []).slice().sort((a, b) =>
+        a.created_at.localeCompare(b.created_at),
+      ),
+    }))
     enriched.sort((a, b) => b.votes.length - a.votes.length)
     setSongs(enriched)
+  }
+
+  function toggleComments(songId: string) {
+    setOpenComments((prev) => {
+      const next = new Set(prev)
+      if (next.has(songId)) next.delete(songId)
+      else next.add(songId)
+      return next
+    })
+  }
+
+  async function postComment(song: EnrichedSong) {
+    const body = (commentDraft[song.id] ?? '').trim()
+    if (!body) return
+    await supabase().from('song_comments').insert({
+      song_id: song.id,
+      commenter: me.nickname,
+      body,
+    })
+    setCommentDraft((prev) => ({ ...prev, [song.id]: '' }))
+    reload()
+  }
+
+  async function deleteComment(c: SongCommentRow) {
+    if (c.commenter !== me.nickname) return
+    if (!confirm('このコメントを削除しますか？')) return
+    await supabase().from('song_comments').delete().eq('id', c.id)
+    reload()
   }
 
   useEffect(() => {
@@ -218,6 +278,14 @@ export default function SongsView({
                         </button>
                       </>
                     )}
+                    ・
+                    <button
+                      className="ghost"
+                      style={{ padding: '0 6px', fontSize: 12 }}
+                      onClick={() => toggleComments(s.id)}
+                    >
+                      💬 {s.comments.length}
+                    </button>
                     {s.picked_by === me.nickname && (
                       <>
                         ・
@@ -245,6 +313,58 @@ export default function SongsView({
                     allowFullScreen
                     style={{ border: 0, borderRadius: 8 }}
                   />
+                </div>
+              )}
+              {openComments.has(s.id) && (
+                <div className="comment-thread">
+                  {s.comments.length === 0 && (
+                    <p className="muted" style={{ fontSize: 13 }}>
+                      まだコメントはありません。最初の一言をどうぞ。
+                    </p>
+                  )}
+                  {s.comments.map((c) => (
+                    <div key={c.id} className="comment">
+                      <div className="comment-head">
+                        <strong>{c.commenter}</strong>
+                        <span className="muted" style={{ fontSize: 12 }}>
+                          {timeAgo(c.created_at)}
+                        </span>
+                        {c.commenter === me.nickname && (
+                          <button
+                            className="ghost"
+                            style={{ padding: '0 4px', fontSize: 11, marginLeft: 'auto' }}
+                            onClick={() => deleteComment(c)}
+                          >
+                            削除
+                          </button>
+                        )}
+                      </div>
+                      <div className="comment-body">{c.body}</div>
+                    </div>
+                  ))}
+                  <div className="comment-form">
+                    <textarea
+                      rows={2}
+                      value={commentDraft[s.id] ?? ''}
+                      onChange={(e) =>
+                        setCommentDraft((prev) => ({ ...prev, [s.id]: e.target.value }))
+                      }
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                          e.preventDefault()
+                          postComment(s)
+                        }
+                      }}
+                      placeholder="コメントを書く（⌘/Ctrl + Enter で投稿）"
+                    />
+                    <button
+                      style={{ marginTop: 6 }}
+                      onClick={() => postComment(s)}
+                      disabled={!(commentDraft[s.id] ?? '').trim()}
+                    >
+                      投稿
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
