@@ -5,6 +5,7 @@ import { getJwtForSlug, jwtExpired, saveJwt, clearJwt, setCurrentSlug } from '..
 import type { EventMeta, ParticipantRow } from '../lib/types'
 import PasswordGate from '../components/PasswordGate'
 import ParticipantForm from '../components/ParticipantForm'
+import ParticipantPicker from '../components/ParticipantPicker'
 import InstrumentEditor from '../components/InstrumentEditor'
 import ScheduleView from '../components/ScheduleView'
 import SongsView from '../components/SongsView'
@@ -20,6 +21,7 @@ export default function EventPage() {
   const [tab, setTab] = useState<'schedule' | 'songs'>('schedule')
   const [loading, setLoading] = useState(true)
   const [editingInstruments, setEditingInstruments] = useState(false)
+  const [creatingNew, setCreatingNew] = useState(false)
 
   const loadMe = useCallback(async () => {
     const myId = localStorage.getItem(MY_PARTICIPANT_KEY(slug))
@@ -116,7 +118,16 @@ export default function EventPage() {
   }
 
   if (!me) {
-    return <ParticipantForm eventId={meta.id} onCreated={onMe} />
+    if (creatingNew) {
+      return <ParticipantForm eventId={meta.id} onCreated={onMe} />
+    }
+    return (
+      <ParticipantPicker
+        eventId={meta.id}
+        onPick={onMe}
+        onCreateNew={() => setCreatingNew(true)}
+      />
+    )
   }
 
   return (
@@ -147,6 +158,7 @@ export default function EventPage() {
               localStorage.removeItem(MY_PARTICIPANT_KEY(slug))
               setMe(null)
               setEditingInstruments(false)
+              setCreatingNew(false)
             }}
           >
             別の人で回答
