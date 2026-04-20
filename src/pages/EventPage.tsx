@@ -5,6 +5,7 @@ import { getJwtForSlug, jwtExpired, saveJwt, clearJwt, setCurrentSlug } from '..
 import type { EventMeta, ParticipantRow } from '../lib/types'
 import PasswordGate from '../components/PasswordGate'
 import ParticipantForm from '../components/ParticipantForm'
+import InstrumentEditor from '../components/InstrumentEditor'
 import ScheduleView from '../components/ScheduleView'
 import SongsView from '../components/SongsView'
 import { supabase } from '../lib/supabase'
@@ -18,6 +19,7 @@ export default function EventPage() {
   const [me, setMe] = useState<ParticipantRow | null>(null)
   const [tab, setTab] = useState<'schedule' | 'songs'>('schedule')
   const [loading, setLoading] = useState(true)
+  const [editingInstruments, setEditingInstruments] = useState(false)
 
   const loadMe = useCallback(async () => {
     const myId = localStorage.getItem(MY_PARTICIPANT_KEY(slug))
@@ -124,7 +126,7 @@ export default function EventPage() {
         <p className="muted">
           {meta.start_date} 〜 {meta.end_date} ・ {meta.slot_start_hour}:00-{meta.slot_end_hour}:00
         </p>
-        <p className="muted">
+        <p className="muted" style={{ marginBottom: 0 }}>
           回答中: <strong>{me.nickname}</strong>{' '}
           {me.instruments.map((i) => (
             <span className="pill" key={i}>
@@ -134,14 +136,32 @@ export default function EventPage() {
           <button
             className="ghost"
             style={{ padding: '2px 8px', fontSize: 12 }}
+            onClick={() => setEditingInstruments((v) => !v)}
+          >
+            {editingInstruments ? '閉じる' : '楽器を編集'}
+          </button>{' '}
+          <button
+            className="ghost"
+            style={{ padding: '2px 8px', fontSize: 12 }}
             onClick={() => {
               localStorage.removeItem(MY_PARTICIPANT_KEY(slug))
               setMe(null)
+              setEditingInstruments(false)
             }}
           >
             別の人で回答
           </button>
         </p>
+        {editingInstruments && (
+          <InstrumentEditor
+            participant={me}
+            onSaved={(p) => {
+              setMe(p)
+              setEditingInstruments(false)
+            }}
+            onCancel={() => setEditingInstruments(false)}
+          />
+        )}
       </div>
 
       <div className="tabs">
