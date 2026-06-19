@@ -26,10 +26,11 @@ Deno.serve(async (req) => {
       password,
     } = await req.json()
 
-    if (!title || !start_date || !end_date || !password) {
+    if (!title || !start_date || !end_date) {
       return jsonResponse({ error: 'missing required field' }, 400)
     }
-    if (typeof password !== 'string' || password.length < 4) {
+    const hasPassword = password !== undefined && password !== null && password !== ''
+    if (hasPassword && (typeof password !== 'string' || password.length < 4)) {
       return jsonResponse({ error: 'password too short' }, 400)
     }
 
@@ -42,7 +43,7 @@ Deno.serve(async (req) => {
       auth: { persistSession: false },
     })
 
-    const password_hash = await bcrypt.hash(password, 10)
+    const password_hash = hasPassword ? await bcrypt.hash(password, 10) : null
 
     // Try a few slugs in case of unlikely collision.
     let slug = randomSlug()

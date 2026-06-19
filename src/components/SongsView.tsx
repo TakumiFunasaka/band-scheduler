@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { fetchPopularSongs } from '../lib/api'
 import { supabase } from '../lib/supabase'
 import type {
+  CarrySong,
   ParticipantRow,
   PopularSong,
   SongCommentRow,
@@ -85,6 +87,10 @@ export default function SongsView({
   const [expanded, setExpanded] = useState<string | null>(null)
   const [openComments, setOpenComments] = useState<Set<string>>(new Set())
   const [commentDraft, setCommentDraft] = useState<Record<string, string>>({})
+  // Songs the organizer has *unchecked* for carry-over. A song carries over
+  // unless it's in this set, so newly added songs are included by default.
+  const [carryExcluded, setCarryExcluded] = useState<Set<string>>(new Set())
+  const navigate = useNavigate()
 
   async function reload() {
     const { data } = await supabase()
@@ -231,6 +237,28 @@ export default function SongsView({
     if (!confirm('この曲を削除しますか？')) return
     await supabase().from('songs').delete().eq('id', song.id)
     reload()
+  }
+
+  function toggleCarry(songId: string) {
+    setCarryExcluded((prev) => {
+      const next = new Set(prev)
+      if (next.has(songId)) next.delete(songId)
+      else next.add(songId)
+      return next
+    })
+  }
+
+  const carrySelected = songs.filter((s) => !carryExcluded.has(s.id))
+
+  function createNextEvent() {
+    const carrySongs: CarrySong[] = carrySelected.map((s) => ({
+      title: s.title,
+      artist: s.artist,
+      youtube_url: s.youtube_url,
+      source: s.source,
+      picked_by: s.picked_by,
+    }))
+    navigate('/create', { state: { carrySongs } })
   }
 
   return (
@@ -461,6 +489,48 @@ export default function SongsView({
           </div>
         ))}
       </div>
+
+      {songs.length > 0 && (
+        <div className="card">
+          <h2 style={{ margin: 0 }}>次の募集回に引き継ぐ</h2>
+          <p className="muted" style={{ marginTop: 8 }}>
+            今回やらなかった曲などを選んで、次の日程調整に候補曲ごと引き継げます。
+            チェックした曲が新しい募集回にコピーされます（投票はリセットされます）。
+          </p>
+          <div style={{ margin: '8px 0' }}>
+            {songs.map((s) => (
+              <label
+                key={s.id}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  padding: '4px 0',
+                  cursor: 'pointer',
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={!carryExcluded.has(s.id)}
+                  onChange={() => toggleCarry(s.id)}
+                  style={{ width: 'auto' }}
+                />
+                <span>
+                  {s.title}
+                  {s.artist && <span className="muted"> — {s.artist}</span>}
+                </span>
+              </label>
+            ))}
+          </div>
+          <button
+            style={{ marginTop: 8 }}
+            onClick={createNextEvent}
+            disabled={carrySelected.length === 0}
+          >
+            選んだ {carrySelected.length} 曲で次の募集回を作成
+          </button>
+        </div>
+      )}
     </div>
   )
 }

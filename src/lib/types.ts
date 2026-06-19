@@ -55,6 +55,15 @@ export type SongRow = {
   created_at: string
 }
 
+// A candidate song carried over from a previous event into a newly created one.
+export type CarrySong = {
+  title: string
+  artist: string | null
+  youtube_url: string | null
+  source: SongRow['source']
+  picked_by: string
+}
+
 export type SongVoteRow = {
   id: string
   song_id: string

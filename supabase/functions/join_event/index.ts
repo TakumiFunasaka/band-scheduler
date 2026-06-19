@@ -9,8 +9,8 @@ Deno.serve(async (req) => {
 
   try {
     const { slug, password } = await req.json()
-    if (!slug || !password) {
-      return jsonResponse({ error: 'slug and password required' }, 400)
+    if (!slug) {
+      return jsonResponse({ error: 'slug required' }, 400)
     }
 
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
@@ -33,8 +33,12 @@ Deno.serve(async (req) => {
     if (error) return jsonResponse({ error: error.message }, 500)
     if (!event) return jsonResponse({ error: 'event not found' }, 404)
 
-    const ok = await bcrypt.compare(password, event.password_hash)
-    if (!ok) return jsonResponse({ error: 'パスワードが違います' }, 401)
+    // Passwordless events (null hash) are joinable by anyone with the URL.
+    if (event.password_hash) {
+      if (!password) return jsonResponse({ error: 'パスワードが必要です' }, 401)
+      const ok = await bcrypt.compare(password, event.password_hash)
+      if (!ok) return jsonResponse({ error: 'パスワードが違います' }, 401)
+    }
 
     const jwt = await signJwt(
       {

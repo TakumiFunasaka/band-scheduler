@@ -27,7 +27,7 @@ export type CreateEventInput = {
   slot_start_hour?: number
   slot_end_hour?: number
   weekdays_only?: boolean
-  password: string
+  password?: string
 }
 
 export type CreateEventResult = {
@@ -43,7 +43,7 @@ export async function createEvent(
 
 export type JoinEventInput = {
   slug: string
-  password: string
+  password?: string
 }
 
 export type JoinEventResult = {

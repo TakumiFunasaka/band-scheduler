@@ -9,7 +9,7 @@ create table if not exists events (
   id uuid primary key default gen_random_uuid(),
   slug text unique not null,
   title text not null,
-  password_hash text not null,
+  password_hash text, -- null = no password (joinable by URL alone)
   start_date date not null,
   end_date date not null,
   slot_start_hour int not null default 18,

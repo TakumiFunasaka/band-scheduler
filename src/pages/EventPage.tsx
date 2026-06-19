@@ -43,8 +43,27 @@ export default function EventPage() {
     if (existing && !jwtExpired(existing)) {
       setCurrentSlug(slug)
       setAuthed(true)
+      setLoading(false)
+      return
     }
-    setLoading(false)
+    // No valid JWT yet — try a passwordless join. Succeeds for events with no
+    // password; a passworded event returns 401 and we fall back to the gate.
+    let cancelled = false
+    ;(async () => {
+      try {
+        const { jwt } = await joinEvent({ slug, password: '' })
+        if (cancelled) return
+        saveJwt(slug, jwt)
+        setAuthed(true)
+      } catch {
+        // needs a password — PasswordGate will be shown
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
   }, [slug])
 
   const [fetchError, setFetchError] = useState<string | null>(null)
